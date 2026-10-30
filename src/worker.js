@@ -1,5 +1,6 @@
 import legacy,{body,stmt,result,quota,log,originCheck,cookie} from './legacy.js';
 import {initialize} from './schema.js';
+import {loginPage} from './login-page.js';
 import {AppError,check,text,date,priceInput} from './domain.js';
 import {digest,verifier,passwordMatches,random,decrypt} from './crypto.js';
 import {teamSchema,batchInput,itemInput,normalized,signature,compileRecords,analytics} from './team.js';
@@ -12,9 +13,9 @@ const admin=u=>check(u.role==='admin','Hanya Admin yang dapat mengakses pengatur
 const editor=u=>check(['admin','editor'].includes(u.role),'Akses tulis tidak diberikan.',403);
 async function batchRow(db,id){const r=await stmt(db,'SELECT * FROM batches WHERE id=?',id).first();check(r,'Batch tidak ditemukan.',404);r.rows=JSON.parse(r.rows_json);delete r.rows_json;return r;}
 async function validateMappings(db,rows){const ids=[...new Set(rows.map(r=>r.item_id).filter(Boolean))];for(const id of ids){const item=await stmt(db,'SELECT * FROM canonical_items WHERE id=?',id).first();check(item,'Item standar tidak ditemukan.');for(const r of rows.filter(r=>r.item_id===id))check(signature(r)===signature(item),'Kondisi, unit atau kemasan berbeda dari item standar.');}}
-async function api(req,env){const url=new URL(req.url),p=url.pathname,db=env.DB;if(p==='/api/status')return result({version:'0.2.0',database:Boolean(db),loginConfigured:Boolean(env.BOOTSTRAP_ADMIN_HASH),encryptionConfigured:Boolean(env.SETTINGS_ENCRYPTION_KEY),documents:Boolean(env.DOCUMENTS)});check(db,'D1 belum terhubung.',503);await initializeTeam(env);if(!['GET','HEAD'].includes(req.method))originCheck(req);
+async function api(req,env){const url=new URL(req.url),p=url.pathname,db=env.DB;if(p==='/api/status'&&!req.headers.get('Cookie'))return result({requiresLogin:true});check(db,'D1 belum terhubung.',503);await initializeTeam(env);if(!['GET','HEAD'].includes(req.method))originCheck(req);
 if(p==='/api/login'&&req.method==='POST'){await quota(db,'team-login:'+await digest(req.headers.get('CF-Connecting-IP')??'local'),8,900);await quota(db,'team-login-global',60,900);const b=await body(req,2000),login=normalized(text(b.username,50)),password=text(b.password,256);const u=await stmt(db,'SELECT * FROM users WHERE login=? AND active=1',login).first();check(u&&await passwordMatches(password,u.password_hash),'Username atau password salah.',401);const raw=random().replaceAll('+','-').replaceAll('/','_'),token=await digest(raw);await db.batch([stmt(db,'INSERT INTO sessions(token,expires) VALUES(?,?)',token,Date.now()+8*3600000),stmt(db,'INSERT INTO user_sessions(token,user_id) VALUES(?,?)',token,u.id),log(db,u.id,'user-login',u.id),stmt(db,'DELETE FROM sessions WHERE expires<?',Date.now()),stmt(db,'DELETE FROM limits WHERE expires<?',Math.floor(Date.now()/1000))]);return result({user:{id:u.id,username:u.username,role:u.role,must_change:u.must_change}},200,{'Set-Cookie':cookie(raw,8*3600)});}
-const u=await identity(req,db);if(p==='/api/session')return result({user:u?{id:u.id,username:u.username,role:u.role,must_change:u.must_change}:null});check(u,'Masuk untuk menggunakan data dan AI tim.',401);await quota(db,'team-api:'+u.id,2000,3600);
+const u=await identity(req,db);if(p==='/api/status')return result(u?{version:'0.2.0',database:Boolean(db),loginConfigured:true,encryptionConfigured:Boolean(env.SETTINGS_ENCRYPTION_KEY),documents:Boolean(env.DOCUMENTS)}:{requiresLogin:true});if(p==='/api/session')return result({user:u?{id:u.id,username:u.username,role:u.role,must_change:u.must_change}:null});check(u,'Masuk untuk menggunakan data dan AI tim.',401);await quota(db,'team-api:'+u.id,2000,3600);
 if(p==='/api/me/password'&&req.method==='POST'){const b=await body(req,2000);const old=await stmt(db,'SELECT password_hash FROM users WHERE id=?',u.id).first();check(await passwordMatches(text(b.current,256),old.password_hash),'Password saat ini salah.',403);const pass=text(b.password,256);check(pass.length>=8,'Password minimal 8 karakter.');await db.batch([stmt(db,'UPDATE users SET password_hash=?,must_change=0 WHERE id=?',await verifier(pass),u.id),stmt(db,'DELETE FROM sessions WHERE token IN (SELECT token FROM user_sessions WHERE user_id=?)',u.id),log(db,u.id,'change-password',u.id)]);return result({ok:true},200,{'Set-Cookie':cookie('',0)});}
 if(p==='/api/logout'&&req.method==='POST'){await stmt(db,'DELETE FROM sessions WHERE token=?',u.token).run();return result({ok:true},200,{'Set-Cookie':cookie('',0)});}
 check(!u.must_change,'Ganti password sementara terlebih dahulu.',403);
@@ -45,4 +46,17 @@ if(req.method!=='GET'&&req.method!=='HEAD')editor(u);
 if(p.startsWith('/api/settings')||p==='/api/logout-all'||p==='/api/audit')admin(u);
 return legacy.fetch(req,env);
 }
-export default {async fetch(req,env){let r;try{r=new URL(req.url).pathname.startsWith('/api/')?await api(req,env):await env.ASSETS.fetch(req);}catch(e){const message=String(e?.message);r=result({error:message.includes('LAST_ADMIN')?'Admin aktif terakhir tidak boleh dinonaktifkan/demote.':message.includes('OVERLAP')?'Periode harga bertabrakan.':e instanceof AppError?e.message:'Operasi gagal. Periksa konfigurasi atau muat ulang.'},message.includes('LAST_ADMIN')?409:e instanceof AppError?e.status:500);}const h=new Headers(r.headers);h.set('X-Content-Type-Options','nosniff');h.set('Referrer-Policy','same-origin');h.set('X-Frame-Options','DENY');h.set('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; connect-src 'self'; worker-src 'self' blob:; object-src 'none'; frame-src 'self' blob:; base-uri 'none'; form-action 'self'; frame-ancestors 'none'");return new Response(r.body,{status:r.status,headers:h});}};
+async function staticRoute(req,env){
+ const path=new URL(req.url).pathname;
+ // Only assets needed by the public login page bypass authentication.
+ if(['/style.css','/icon.svg','/login.js'].includes(path))return env.ASSETS.fetch(req);
+ let user=null;
+ if(env.DB&&req.headers.get('Cookie')){await initializeTeam(env);user=await identity(req,env.DB);}
+ if(!user){
+  const document=path==='/'||path.endsWith('.html')||(req.headers.get('Accept')??'').includes('text/html');
+  return document?loginPage():result({error:'Silakan masuk terlebih dahulu.'},401);
+ }
+ if(['/login','/login.html','/setup','/setup.html'].includes(path))return new Response(null,{status:302,headers:{Location:'/'}});
+ return env.ASSETS.fetch(req);
+}
+export default {async fetch(req,env){let r;try{r=new URL(req.url).pathname.startsWith('/api/')?await api(req,env):await staticRoute(req,env);}catch(e){const message=String(e?.message);r=result({error:message.includes('LAST_ADMIN')?'Admin aktif terakhir tidak boleh dinonaktifkan/demote.':message.includes('OVERLAP')?'Periode harga bertabrakan.':e instanceof AppError?e.message:'Operasi gagal. Periksa konfigurasi atau muat ulang.'},message.includes('LAST_ADMIN')?409:e instanceof AppError?e.status:500);}const h=new Headers(r.headers);h.set('Cache-Control','private, no-store');h.set('Vary','Cookie');h.set('X-Robots-Tag','noindex, nofollow');h.set('X-Content-Type-Options','nosniff');h.set('Referrer-Policy','same-origin');h.set('X-Frame-Options','DENY');h.set('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; connect-src 'self'; worker-src 'self' blob:; object-src 'none'; frame-src 'self' blob:; base-uri 'none'; form-action 'self'; frame-ancestors 'none'");return new Response(r.body,{status:r.status,headers:h});}};

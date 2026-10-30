@@ -1,11 +1,11 @@
 # MIS Harga v0.2
 
-Workspace internal satu tim di Cloudflare Workers + D1, dengan aplikasi upload langsung di beranda. Mengikuti prinsip [Ponytail](https://github.com/DietrichGebert/ponytail): Web APIs/native UI, validasi data harga, perhitungan deterministik, review manusia, dan tes terfokus.
+Workspace internal satu tim di Cloudflare Workers + D1, dengan halaman awal login username/password. Halaman dan aset workspace dilindungi sesi server. Mengikuti prinsip [Ponytail](https://github.com/DietrichGebert/ponytail): Web APIs/native UI, validasi data harga, perhitungan deterministik, review manusia, dan tes terfokus.
 
 ## Alur penggunaan
 
 1. Drop gambar/PDF/XLSX/CSV, atau input manual. CSV/XLSX dipetakan lokal, OCR visual memakai Gemini setelah sign in dan persetujuan pemrosesan.
-2. Periksa sumber dan tabel berdampingan. Koreksi harga, unit, kondisi, channel, tanggal dan item. Copy TSV atau download Excel tanpa akun.
+2. Periksa sumber dan tabel berdampingan. Koreksi harga, unit, kondisi, channel, tanggal dan item. Setelah login, copy TSV atau download Excel sebelum menyimpan draft.
 3. Simpan draft di D1; folder PT/tanggal terbentuk dari metadata. Draft boleh belum lengkap. Konfirmasi hanya setelah harga/sumber/unit dan mapping standar valid.
 4. Admin membuat master item dan menyetujui alias per PT/spesifikasi. Alias persis yang disetujui dapat dipakai ulang; saran mirip tidak otomatis digabung.
 5. Kompilasi item × PT dari batch terkonfirmasi. Pilih date range dan PT; klik harga untuk semua sumber. Konflik diberi label dan tidak dipilih sebagai harga utama.
