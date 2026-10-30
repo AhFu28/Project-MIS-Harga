@@ -34,7 +34,7 @@ Runtime Secrets:
 - `SETTINGS_ENCRYPTION_KEY`: 32 byte Base64; pertahankan key lama agar konfigurasi provider dapat didekripsi.
 - `APP_PASSWORD_HASH`: secret v0.1 boleh dipertahankan saat upgrade; entrypoint v0.2 memakai akun individual.
 
-`GEMINI_FREE_CONFIRMED=true` hanya jika pemilik telah memastikan proyek Gemini tanpa billing. Default false. Isi key via Admin Settings → Fetch model → pilih → Simpan → Tes koneksi. Konfirmasi consent provider sebelum mengirim data.
+Konfirmasi proyek Gemini gratis tanpa billing pada Admin Settings hanya setelah pemilik memeriksa billing Google. Default false; deployment juga dapat menetapkan `GEMINI_FREE_CONFIRMED=true`. Isi key via Admin Settings → Fetch model → pilih → Simpan → Tes koneksi. Konfirmasi consent provider sebelum mengirim data.
 
 R2 `DOCUMENTS` opsional, tidak diaktifkan secara default. Tanpa R2, data tabel tersimpan di D1, gambar hanya preview/download lokal dan tidak tersedia lagi setelah perangkat ditutup. Mengaktifkan R2 perlu penilaian biaya akun; allowance gratis bukan jaminan tagihan nol.
 
