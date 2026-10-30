@@ -48,7 +48,7 @@ Default berikut dipakai bila belum ada perubahan dari pemilik:
 ## MVP yang akan dibangun
 | Modul | Hasil yang harus berfungsi |
 |---|---|
-| Akses | Login internal dan peran Admin, Operator, Reviewer, Viewer; API memeriksa izin |
+| Akses | Satu password bersama, validasi di server, session cookie aman; semua pemegang password mempunyai akses yang sama |
 | Master | Pemasok, produk, fresh/frozen, ukuran, kemasan, satuan, wilayah, channel, alias |
 | Arsip | Upload gambar/PDF/XLSX/CSV, dokumen privat, metadata sumber, hash duplikat |
 | Input/review | Input manual dan draft impor; sumber berdampingan dengan hasil; koreksi dan persetujuan |
@@ -72,9 +72,9 @@ Urutan MVP membuat fungsi harga/manual terlebih dahulu agar aplikasi tetap bergu
 | AI dokumen | Gemini API langsung | Pembacaan visual dan output terstruktur |
 | AI tambahan | OpenRouter API | Model teks untuk ringkasan; bukan sumber angka utama |
 | CI/deploy | GitHub checks + Cloudflare Workers Builds | Satu jalur deployment dari main |
-| Login | Kandidat Cloudflare Access | Harus dibuktikan cocok dengan host/domain dan akun pengguna |
+| Login | Password bersama dan sesi server | Sesuai keputusan pemilik; Cloudflare Access bukan syarat MVP |
 
-Cloudflare Access belum dianggap keputusan final sampai POC memverifikasi proteksi hostname, validasi token, dan alur login. Jika host awal tidak mendukung kebutuhan yang disepakati, pilih auth terkelola yang paling kecil dan sesuai; jangan membuat password sendiri.
+Login MVP memakai password bersama yang ditetapkan pemilik melalui secret, bukan hardcode frontend. Tidak ada akun/peran terpisah pada MVP. Semua pemegang password mempunyai hak yang sama, termasuk Settings dan persetujuan; audit mencatat sesi, bukan identitas personal yang terverifikasi. Jika tim memerlukan pemisahan hak akses, barulah tambahkan login per pengguna.
 
 Paket dan kuota harus dicek pada akun nyata sebelum provisioning. OCR berat, ekstraksi RAR, dan konversi file besar tidak diasumsikan dapat berjalan pada request Workers Free. Import arsip lama dilakukan melalui proses migrasi terkontrol; aplikasi awal menerima file yang sudah diekstrak. ExcelJS adalah kandidat ekspor yang perlu diuji ukuran bundle dan memori.
 
@@ -86,7 +86,8 @@ Paket dan kuota harus dicek pada akun nyata sebelum provisioning. OCR berat, eks
 - import_jobs dan extraction_runs: status, model, versi prompt/schema, retry, hasil mentah.
 - price_records: harga, unit, basis pajak/ongkir, interval berlaku, sumber, status publikasi.
 - price_revisions dan review_actions: koreksi, alasan, reviewer, waktu pencatatan.
-- users/role mapping dan audit_events: identitas, izin, aksi.
+- sessions dan audit_events: sesi, aksi, waktu; tanpa klaim identitas individual pada shared login.
+- app_settings: konfigurasi model, ciphertext key provider, status tes koneksi, versi konfigurasi.
 - ai_runs: provider/model aktual, penggunaan, error; tanpa bocoran secret.
 
 Harga disimpan sebagai integer rupiah atau integer berskala untuk pecahan. Tanggal berlaku dan waktu pencatatan berbeda. Akhir interval internal bersifat eksklusif. Nilai kosong, nol, strip, dan “hubungi sales” tidak disamakan.
@@ -113,12 +114,12 @@ Estimasi awal keseluruhan tetap 20–34 hari kerja pengembangan untuk satu penge
 | Sudah dirujuk | Cek 1.rar dan Cek 2.rar | Gunakan dua arsip yang sudah diberikan; jangan upload ulang kecuali gagal diakses | Audit/migrasi |
 | Wajib deployment | Akun Cloudflare yang dipakai | Pemilik login dan menghubungkan repo lewat dashboard; tidak perlu memberikan password | POC staging |
 | Wajib deployment | D1, R2, binding, environment | Dibuat dengan panduan setup yang disertakan saat kode siap | POC staging |
-| Wajib login | Email Admin dan pengguna pilot, masing-masing peran | Berikan secara privat, jangan ditulis dalam repo public | POC login |
+| Sudah diputuskan | Password bersama | Nilai yang diminta pemilik dipasang sebagai secret; tidak dicantumkan pada repo public | Sebelum deployment |
 | Wajib data | Status kerahasiaan dan izin memproses pricelist melalui provider AI | Nyatakan publik/boleh dikirim atau rahasia/tidak boleh | Sebelum mengirim dokumen ke AI |
-| Wajib AI | Gemini API project/key | Buat di AI Studio dan masukkan ke Workers Secrets | Pengujian Gemini |
-| Wajib AI | OpenRouter API account/key | Masukkan ke Workers Secrets | Pengujian OpenRouter |
-| Wajib operasional | Pilihan biaya | Gratis saja atau batas maksimum bulanan; tidak ada upgrade diam-diam | Sebelum aktivasi layanan |
-| Wajib audit | Satu reviewer bisnis | Tunjuk orang yang bisa mengesahkan harga, tanggal, produk, dan unit | Pilot sampai go-live |
+| Nanti melalui web | Gemini API project/key | Isi di Settings setelah deployment; simpan terenkripsi pada backend | Pengujian Gemini |
+| Nanti melalui web | OpenRouter API account/key | Isi di Settings setelah deployment; simpan terenkripsi pada backend | Pengujian OpenRouter |
+| Sudah diputuskan | Budget gratis | Model gratis saja; stop/antre saat kuota habis, tanpa fallback berbayar | Sepanjang operasi |
+| Sudah diputuskan | Pemilik sebagai reviewer akhir + review AI | AI memberi temuan; pemilik mengoreksi/menyetujui publikasi | Pilot sampai go-live |
 | Jika ada | Daftar pemasok/channel/wilayah dan kamus SKU | Berikan file master yang memang dipakai; bila belum ada dibentuk dari arsip | Tahap 0–3 |
 | Jika ada | Format Excel final/contoh laporan | Pakai contoh hasil yang dianggap benar; bila belum ada disusun dari aturan percakapan | Tahap 3 |
 | Opsional | Domain/subdomain | Misalnya harga.domain-perusahaan; bukan syarat build lokal | Sebelum domain produksi |
@@ -126,19 +127,13 @@ Estimasi awal keseluruhan tetap 20–34 hari kerja pengembangan untuk satu penge
 
 Sampel awal diambil dari arsip yang ada, bukan meminta pengguna menyiapkan ulang seluruh dataset. Hanya file tidak terbaca, periode konflik, atau metadata yang tak dapat disimpulkan yang dikembalikan sebagai pertanyaan.
 
-### Format jawaban singkat yang dapat dipakai
-- Cloudflare: sudah ada / belum.
-- Biaya: gratis saja / maksimal USD ... per bulan.
-- Pricelist: boleh diproses provider AI / rahasia, jangan kirim dulu / perlu konfirmasi internal.
-- Reviewer: saya sendiri / orang lain.
-- Pengguna pilot: jumlah ...; email dan peran diberikan secara privat saat setup.
-- Domain: pakai alamat platform dahulu / domain sendiri ....
-- Kalender: default Senin–Minggu / aturan lain ....
-- Gemini/OpenRouter: akun sudah ada / perlu panduan membuat akun.
+### Kebutuhan yang masih tersisa
+- Konfigurasi Worker, D1, dan penyimpanan dokumen pada akun Cloudflare.
+- Status kerahasiaan pricelist sebelum pemrosesan AI eksternal.
+- Key Gemini/OpenRouter nanti, melalui Settings, bukan lewat chat.
+- Pemeriksaan hasil pilot oleh pemilik.
 
-API key tidak dikirim lewat chat, issue, atau commit. Nama secret rencana: GEMINI_API_KEY dan OPENROUTER_API_KEY. Nama model disimpan sebagai konfigurasi terpisah dan dipilih berdasarkan model yang benar-benar tersedia pada akun. Cloudflare Account ID dan resource ID merupakan konfigurasi non-secret, tetap tidak perlu diumbar dalam dokumentasi publik.
-
-Jika deployment dikerjakan pemilik melalui koneksi GitHub–Cloudflare, token API Cloudflare tidak perlu diberikan kepada pengembang. Jika kelak diperlukan deployment via CI, gunakan token dengan scope minimum melalui penyimpanan secret yang sesuai.
+Domain ditunda dan dapat dipasang kemudian. Identitas/email pengguna tidak diperlukan untuk MVP password bersama.
 
 ## Setup yang akan disertakan bersama implementasi
 1. Panduan membuat/memilih akun Cloudflare dan menghubungkan hanya repo ini.
@@ -151,7 +146,7 @@ Jika deployment dikerjakan pemilik melalui koneksi GitHub–Cloudflare, token AP
 
 ## Checklist siap dijalankan
 - [ ] Build frontend/backend dan migrasi berhasil di environment target.
-- [ ] Login dan setiap role diuji, termasuk akses langsung ke API/dokumen.
+- [ ] Login bersama, sesi, logout, pembatasan percobaan, dan akses langsung API/dokumen diuji.
 - [ ] Dokumen di R2 privat; tidak ada data asli pada repo public.
 - [ ] Semua harga terbit memiliki sumber, masa berlaku, dan reviewer.
 - [ ] Kasus fresh/frozen, unit/kemasan, periode beda, duplikat, gap, dan revisi lulus tes.
@@ -164,6 +159,102 @@ Jika deployment dikerjakan pemilik melalui koneksi GitHub–Cloudflare, token AP
 - [ ] Pilot satu siklus pembaruan mingguan disetujui reviewer.
 
 ## Urutan keputusan berikutnya
-Build lokal dapat dimulai dengan data sintetis tanpa akun/key tambahan. Audit arsip asli dapat berjalan setelah akses file dipastikan. Deployment staging menunggu konfigurasi Cloudflare dan login. Pemrosesan AI dokumen asli menunggu klasifikasi data dan secret. Produksi menunggu audit data dan UAT.
+Build lokal dapat dimulai dengan data sintetis tanpa akun/key tambahan. Audit arsip asli dapat berjalan setelah akses file dipastikan. Deployment staging menunggu konfigurasi Cloudflare dan secret login/enkripsi. Key provider dapat diisi sesudahnya melalui web. Pemrosesan AI dokumen asli menunggu klasifikasi data dan key yang lulus tes. Produksi menunggu audit data dan UAT.
 
 Belum dilakukan: pembangunan aplikasi, instalasi Ponytail, akses Cloudflare, pengujian key/provider, pembacaan ulang arsip, atau deployment. Risiko utama yang belum ditutup adalah tanggal/angka pada sumber, kebijakan data AI gratis, dan batas runtime/kuota akun.
+
+## Revisi keputusan 30 Oktober: setup Cloudflare dan Settings AI
+Bagian ini memperjelas setup minimum sesuai gambar pemilik. Ini rencana konfigurasi, bukan bukti resource atau kode sudah dibuat.
+
+### 1. Halaman Create an app pada gambar
+Halaman yang ditunjukkan adalah koneksi GitHub ke Worker dan sudah berada pada jalur yang benar. Namun repo saat ini hanya berisi dokumentasi: tombol Deploy belum akan menghasilkan aplikasi siap pakai. Tunggu kode aplikasi, package.json, lockfile, dan wrangler.jsonc tersedia.
+
+Isian target setelah kode siap:
+
+| Isian | Nilai rencana |
+|---|---|
+| Repository | AhFu28/Project-MIS-Harga |
+| Project name | project-mis-harga |
+| Production branch | main |
+| Build command | npm run build |
+| Deploy command | npx wrangler deploy |
+| Preview builds | OFF dahulu agar preview tidak menyentuh data/key produksi |
+| Preview command | Default boleh dibiarkan; tidak dijalankan selama preview off |
+| Protect with Cloudflare Access | OFF untuk MVP login aplikasi |
+| Advanced settings → Path/root | Root repo, tidak perlu subfolder; gunakan / bila form memerlukannya |
+
+Perintah tersebut harus dicocokkan dengan script dan konfigurasi final; build tidak diulang di deploy script. Dependency diinstal dari lockfile. Preview nanti memakai resource dan secret terpisah bila diaktifkan.
+
+### 2. Resource minimum pada Cloudflare
+1. **Workers & Pages**: satu Worker project-mis-harga pada Workers Free, terhubung ke repo ini. Gunakan URL workers.dev yang diberikan Cloudflare, tidak memerlukan custom domain.
+2. **D1**: melalui menu penyimpanan/database, buat database mis-harga-db. Di konfigurasi Worker, binding bernama DB menunjuk database tersebut. Database ID dipakai pada wrangler.jsonc; ID bukan password. Nama menu dashboard dapat berubah; cari produk D1 bila susunannya berbeda.
+3. **Dokumen**: pilihan utama bucket R2 Standard privat bernama mis-harga-documents, binding DOCUMENTS. Jangan aktifkan akses public/r2.dev. Penggunaan dari Worker melalui binding tidak memerlukan S3 access key terpisah.
+4. **Secrets runtime**: siapkan APP_PASSWORD_HASH (verifier password bersalt, dihasilkan saat setup), SESSION_SECRET (acak), dan SETTINGS_ENCRYPTION_KEY (kunci AES-GCM acak 256 bit). Secret dipasang pada Worker runtime, bukan variabel build/frontend. Nilai password yang diberikan pemilik tidak ditulis dalam repo public.
+5. **Migrasi**: skema D1 perlu diterapkan dari file migrasi setelah kode tersedia. Binding saja belum menciptakan tabel. Instruksi final akan memberi perintah migrasi sesuai konfigurasi yang benar.
+6. **Domain**: tambahkan nanti melalui pengaturan domain Worker; sesi lama boleh perlu login ulang ketika host berubah.
+
+Resource/binding perlu dicatat dalam Wrangler sebagai sumber konfigurasi agar deployment berikutnya tidak menghapus atau mengganti pengaturan dashboard. Tidak perlu Supabase, VPS, domain berbayar, atau token API Cloudflare yang dikirim lewat chat untuk alur GitHub–Workers Builds.
+
+### 3. Budget gratis dan penyimpanan dokumen
+Tidak mengaktifkan Workers Paid atau fallback model berbayar. Impor batch kecil, cache ekstraksi, retry terbatas, dan kuota aplikasi diberlakukan. Model OpenRouter yang diizinkan harus berharga nol saat dipakai; metadata harga diperiksa ulang, dan job dihentikan jika harga/kemampuan tidak dapat dipastikan. Gemini hanya memakai kuota gratis yang tersedia pada proyek yang dipilih; model/kuota harus dicek pada akun aktual, bukan diasumsikan dari nama model.
+
+R2 mempunyai allowance gratis Standard, tetapi merupakan subscription dengan pemakaian di atas allowance yang dapat ditagih. Aktivasi akun mungkin meminta informasi pembayaran. Karena pemilik menetapkan budget gratis, jangan menyetujui biaya/upgrade secara otomatis. Batas upload dan pemantauan aplikasi mengurangi risiko, tetapi bukan hard spending cap seluruh akun Cloudflare.
+
+Jika pemilik tidak ingin mengaktifkan layanan berbasis pemakaian seperti R2, mulai pilot dengan database harga/manual serta arsip asli disimpan pemilik. Alternatif arsip kecil di D1 dapat dipertimbangkan hanya setelah POC ukuran/limit; bukan pengganti skala penuh untuk file. Fitur upload/preview arsip online belum dinyatakan lengkap dalam mode tanpa object storage. Pilihan ini tidak menghalangi pembangunan inti.
+
+### 4. Login password bersama
+- Halaman depan hanya menampilkan form password, bukan nilai password atau petunjuknya.
+- Password yang diminta pemilik dikonfigurasi sebagai verifier server; tidak ditanam pada JavaScript, localStorage, dokumentasi, atau response API.
+- Session cookie HttpOnly, Secure, SameSite; masa berlaku, logout/revocation, pemeriksaan Origin/CSRF untuk aksi tulis, pembatasan percobaan login dan pesan gagal generik.
+- Gunakan primitive/library autentikasi yang telah teruji dan hashing adaptif bersalt yang sesuai runtime; benchmark CPU Free sebelum memilih parameter. Jangan mengganti dengan hash cepat tanpa salt agar lolos batas CPU.
+- Semua API dan dokumen memeriksa sesi; halaman login saja bukan perlindungan.
+- Shared password berarti setiap pemegang password dapat mengubah key, mengunggah dokumen, dan menyetujui harga. Nama reviewer yang diisi manual bukan bukti identitas.
+- Nilai password tidak dicantumkan pada plan public. Pemilik dapat menggantinya melalui prosedur secret dan membatalkan sesi lama.
+
+### 5. Settings Gemini/OpenRouter dan tes koneksi
+Key tidak diperlukan sekarang. Setelah web berjalan, menu **Settings → AI Connections** menyediakan:
+- Dua kartu provider: Gemini dan OpenRouter.
+- Input key bertipe password, pilihan model yang diizinkan, Simpan/Ganti/Hapus, serta Tes koneksi.
+- Status terpisah: belum diatur, tersimpan belum dites, tersambung, key tidak valid, model tidak tersedia, kuota habis/429, atau gangguan jaringan.
+- Waktu tes terakhir, model yang dites, dan hasil singkat tanpa nilai key.
+- Pengujian memakai request kecil ke model aktual, bukan sekadar memeriksa panjang key atau mendapatkan daftar model.
+- Tes dapat mengurangi kuota gratis; batasi frekuensi. “Tersambung” adalah hasil pada waktu tes, bukan jaminan kuota selalu tersedia.
+- Jika key/model berubah, status tes direset. Kegagalan satu provider tidak disamarkan sebagai sukses provider lain.
+- Aplikasi manual tetap berfungsi bila provider belum diatur.
+
+**Penyimpanan minimum yang aman:** browser mengirim key melalui HTTPS ke endpoint sesi terautentikasi. Backend mengenkripsi dengan Web Crypto AES-GCM, nonce unik per enkripsi dan metadata provider/version; D1 hanya menyimpan ciphertext. Master key berada pada Worker Secret SETTINGS_ENCRYPTION_KEY dan tidak pernah dikembalikan ke browser. Endpoint baca Settings hanya mengembalikan status “key tersimpan”, bukan key penuh; tidak ada key pada localStorage, log, export, atau audit event. Key didekripsi di backend hanya untuk memanggil provider.
+
+Tidak memberikan token administrasi Cloudflare kepada aplikasi hanya untuk mengubah Workers Secrets dari UI. Satu master secret saat setup + ciphertext D1 lebih kecil cakupannya. Backup D1 harus dapat dipasangkan dengan master key yang disimpan pemilik dengan aman; kehilangan master key mengharuskan input ulang key provider. Rotasi master key memerlukan re-enkripsi terkontrol.
+
+Endpoint key dan test hanya menerima provider serta model allowlist, bukan URL arbitrary. Terapkan CSRF/Origin check, batas request, ukuran input, dan masking error. Key hanya disimpan setelah validasi format dasar; status connected hanya sesudah tes aktual lulus.
+
+### 6. Reviewer pemilik + AI
+Alur: **ekstraksi draft → validasi kode → pemeriksaan AI → koreksi/persetujuan pemilik → harga terbit**.
+- Pemeriksaan AI mengecek harga, unit, tanggal, potensi baris hilang, serta konflik dan menyimpan temuan beserta referensi.
+- Reviewer AI memakai tugas/prompt berbeda dari ekstraksi, dapat memakai provider/model yang sama bila hanya satu tersedia; sebutkan ini sebagai pemeriksaan ulang, bukan verifikasi independen.
+- OpenRouter teks dapat memeriksa data terstruktur; hanya model vision yang mampu meninjau gambar. Jangan mengaku membaca ulang sumber visual jika model hanya menerima teks.
+- Ringkasan pemeriksaan: perlu perhatian / tidak menemukan masalah / belum diperiksa. “Tidak menemukan masalah” tidak sama dengan bukti benar.
+- AI tidak diberi tool publikasi atau pengubahan key. Dokumen merupakan data, bukan instruksi untuk agent.
+- Jika kuota habis, tampilkan belum diperiksa AI. Pemilik tetap boleh melakukan review manual dan publikasi dengan alasan tercatat.
+- Tidak memerlukan framework agent atau agent otonom tambahan; cukup satu langkah pemeriksaan terkontrol untuk menghemat kuota.
+
+### 7. Tes tambahan sebelum siap pakai
+- Password salah ditolak; akses API tanpa sesi ditolak; logout/revocation bekerja.
+- Login throttling, CSRF, dan expiry diuji; hashing diverifikasi cocok CPU Free.
+- Key ciphertext berbeda untuk enkripsi ulang; key tidak dapat dibaca dari Settings, log, export, atau bundle.
+- Tes provider membedakan 401/403, 429, model salah, dan timeout; perubahan key menghapus status connected lama.
+- Halaman provider tidak mengizinkan endpoint arbitrary atau model berbayar tanpa aturan.
+- AI review tidak dapat mempublikasikan; kondisi AI mati tidak menghalangi review manual.
+- Repo dan preview tidak memuat dokumen/secret produksi.
+
+### Referensi teknis setup
+Diperiksa 30 Oktober 2026:
+- [Workers Builds configuration](https://developers.cloudflare.com/workers/ci-cd/builds/configuration/)
+- [Workers Secrets](https://developers.cloudflare.com/workers/configuration/secrets/)
+- [Workers Web Crypto](https://developers.cloudflare.com/workers/runtime-apis/web-crypto/)
+- [D1 getting started](https://developers.cloudflare.com/d1/get-started/)
+- [R2 getting started](https://developers.cloudflare.com/r2/get-started/)
+- [R2 pricing](https://developers.cloudflare.com/r2/pricing/)
+- [Workers pricing](https://developers.cloudflare.com/workers/platform/pricing/)
+
+Belum diperiksa pada akun pemilik: aktivasi R2, limit CPU/kuota nyata, resource binding, login, key provider, dan deployment. Plan telah disesuaikan; implementasi dan uji runtime belum dilakukan.
