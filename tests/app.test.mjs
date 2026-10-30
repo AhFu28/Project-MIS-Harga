@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {DatabaseSync} from 'node:sqlite';
-import worker from '../src/worker.js';
+import worker from '../src/legacy.js';
 import {priceInput,weekStart,addDays,comparePrices,freeModel} from '../src/domain.js';
 import {verifier,random,encrypt,decrypt,passwordMatches} from '../src/crypto.js';
 class D1 {

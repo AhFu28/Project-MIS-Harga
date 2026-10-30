@@ -7,3 +7,6 @@ if(process.env.GEMINI_FREE_CONFIRMED==='true')c.vars.GEMINI_FREE_CONFIRMED='true
 if(process.env.D1_DATABASE_ID)c.d1_databases[0].database_id=process.env.D1_DATABASE_ID;
 await writeFile('wrangler.jsonc',JSON.stringify(c,null,2)+'\n');
 console.log('Build complete. R2: '+Boolean(c.r2_buckets?.length)+'. Gemini free confirmed: '+c.vars.GEMINI_FREE_CONFIRMED);
+
+for(const [src,dest] of [['pptxgenjs/dist/pptxgen.bundle.js','pptxgen.bundle.js'],['jspdf/dist/jspdf.umd.min.js','jspdf.umd.min.js'],['pdfjs-dist/build/pdf.mjs','pdf.mjs'],['pdfjs-dist/build/pdf.worker.mjs','pdf.worker.mjs']])await cp('node_modules/'+src,'dist/vendor/'+dest);
+for(const pkg of ['pptxgenjs','jspdf','pdfjs-dist'])await cp('node_modules/'+pkg+'/'+(pkg==='pptxgenjs'?'LICENSE':'LICENSE'),'dist/vendor/'+pkg+'-LICENSE.txt');

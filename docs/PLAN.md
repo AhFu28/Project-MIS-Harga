@@ -1,3 +1,5 @@
+> Catatan arsip v0.1. Alur akun dan setup terbaru mengikuti [README v0.2](../README.md); login bersama dan generator setup bukan alur v0.2.
+
 # Blueprint awal dan revisi
 
 Status implementasi aktual ada di README.md dan docs/DEPLOY.md. Keputusan implementasi v0.1: browser-native UI + Worker native, satu dependency runtime ExcelJS; tidak memakai React/Hono/Drizzle karena belum diperlukan. Sessions disimpan D1; SESSION_SECRET terpisah tidak diperlukan. APP_PASSWORD_HASH dan SETTINGS_ENCRYPTION_KEY adalah dua runtime secret yang diperlukan. R2 opt-in. File ini mempertahankan riwayat rencana, bukan daftar fitur yang sudah selesai.
