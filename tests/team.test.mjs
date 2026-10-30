@@ -24,7 +24,7 @@ test('landing exposes only login and static workspace assets require a live sess
  const hit=(path,token='',accept='')=>worker.fetch(new Request('https://mis.test'+path,{headers:{Cookie:token,Accept:accept}}),env);
  for(const path of ['/','/index.html','/setup.html','/reports']){
   const response=await hit(path,'','text/html');assert.equal(response.status,200);
-  const html=await response.text();assert.ok(html.includes('id="entry-form"'));assert.ok(html.includes('name="username"'));assert.ok(html.includes('name="password"'));
+  const html=await response.text();assert.ok(html.includes('id="entry-form" method="post" action="/api/login"'));assert.ok(html.includes('name="username"'));assert.ok(html.includes('name="password"'));
   for(const hidden of ['id="workspace"','Upload & Hasil','Admin Settings','/app.js','/vendor/'])assert.ok(!html.includes(hidden),path+' leaks '+hidden);
   assert.match(response.headers.get('cache-control'),/no-store/);assert.equal(response.headers.get('vary'),'Cookie');
  }
