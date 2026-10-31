@@ -8,3 +8,5 @@ body{font-size:16px}label,small,.subtle{font-size:14px}button{font-size:14px}h1{
 
 dialog::backdrop{backdrop-filter:none}.edit-table .conversion-button[hidden]{display:none!important}
 .edit-table .conversion-button{display:block;white-space:normal;width:100%;margin-top:7px}.edit-table td:nth-child(4){min-width:150px}.source-panel .panel-head{flex-wrap:wrap;gap:8px}.source-panel .panel-head small{white-space:normal;font-size:12px}@media(max-width:1530px){.upload-layout{grid-template-columns:1fr}.source-panel{position:static}.preview-local{max-height:300px}}
+
+.ocr-progress{display:grid;grid-template-columns:minmax(120px,1fr) auto;gap:8px 14px;margin:16px 0}.ocr-progress[hidden]{display:none}.ocr-progress progress{width:100%;height:18px;accent-color:var(--accent,#b9f477)}.ocr-progress small{grid-column:1/-1;color:#9aabbc}.source-tier{display:block;color:#b9f477;margin-top:6px}.source-tier[hidden]{display:none}

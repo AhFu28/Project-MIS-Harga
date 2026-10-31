@@ -1,4 +1,4 @@
-# MIS Harga v0.3.2
+# MIS Harga v0.3.3
 
 Workspace internal satu tim di Cloudflare Workers + D1. Landing hanya login username/password; halaman, API dan aset workspace memerlukan sesi. Mengikuti prinsip [Ponytail](https://github.com/DietrichGebert/ponytail): Web APIs, UI native, perubahan kecil, validasi bersama, perhitungan deterministik dan review manusia.
 
@@ -61,3 +61,13 @@ R2 tidak diaktifkan. Tidak ada arsip gambar baru dari alur upload ini. Backup su
 ## Pengembangan
 
 Node 22+, `npm ci`, `npm test`, `npm run build`, `npx wrangler deploy --dry-run`, `npm run dev`. Jangan commit `.dev.vars`, key, password nyata, data supplier/pengguna atau database. Dependensi OCR dibundel saat build; browser tidak mengunduh model dari CDN eksternal.
+
+## v0.3.3 OCR and responsiveness audit
+
+- Full ruled grids take precedence over colored product highlights. Pale lines and two-level quantity headers are recognized; header-only inference never invents a selling unit.
+- Dense tables use bounded cell reads. Numeric cells no longer use the horizontal-stroke eraser, which could erase digits in narrow columns. Conflicting reads leave an empty price for correction; unreadable source rows remain visible.
+- OCR stage progress and visible quantity-tier labels. AI requests have a two-minute browser timeout and cannot overlap another extraction.
+- Extra row metadata is created only when expanded; source-row numbering is linear; independent admin settings requests run concurrently.
+- No new dependency or paid OCR service. Unlimited-OCR was reviewed through its official README: Python/CUDA inference requires separate infrastructure and is not embedded in this Worker.
+
+Validation limitation: synthetic parser/grid/security tests are automated. An intermediate browser check of a small screenshot crop still had inaccurate text/numbers. The last numeric-cell correction could not be browser-verified because the browser approval service reached its usage limit. No accuracy percentage or user-device speedup is claimed. Original-resolution supplier files and end-to-end browser regression remain required before treating extraction as reliable. Gemini Auto free is configured separately from code; live inference/key validity remains unverified.
