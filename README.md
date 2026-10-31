@@ -1,4 +1,4 @@
-# MIS Harga v0.3.3
+# MIS Harga v0.3.4
 
 Workspace internal satu tim di Cloudflare Workers + D1. Landing hanya login username/password; halaman, API dan aset workspace memerlukan sesi. Mengikuti prinsip [Ponytail](https://github.com/DietrichGebert/ponytail): Web APIs, UI native, perubahan kecil, validasi bersama, perhitungan deterministik dan review manusia.
 
@@ -71,3 +71,15 @@ Node 22+, `npm ci`, `npm test`, `npm run build`, `npx wrangler deploy --dry-run`
 - No new dependency or paid OCR service. Unlimited-OCR was reviewed through its official README: Python/CUDA inference requires separate infrastructure and is not embedded in this Worker.
 
 Validation limitation: synthetic parser/grid/security tests are automated. An intermediate browser check of a small screenshot crop still had inaccurate text/numbers. The last numeric-cell correction could not be browser-verified because the browser approval service reached its usage limit. No accuracy percentage or user-device speedup is claimed. Original-resolution supplier files and end-to-end browser regression remain required before treating extraction as reliable. Gemini Auto free is configured separately from code; live inference/key validity remains unverified.
+
+## v0.3.4 source-aligned OCR corrections
+
+- Suppress overlapping table regions, retain the left product column, and re-read missing product cells. Blank source gaps and document notes are excluded.
+- Preserve product names across currency-prefixed quantity tiers. Re-read tier headers at higher resolution, normalize dark header polarity, and flag disagreements. Select ordinary prices before HORECA.
+- Treat suspicious leading-zero grouped prices as unreadable. Keep incomplete values for review rather than inventing digits.
+- Red-heavy promotional posters currently fail explicitly with AI/manual guidance; this is a bounded sample heuristic, not a universal layout classifier.
+- Use explicit source-header condition evidence rather than filenames; mixed Fresh/Frozen cells remain ambiguous. Support spaced and cross-month filename date proposals.
+- Overlapping validity windows alone no longer invalidate update averages; contradictory same-date prices remain conflicts. All updates and original dates remain stored.
+- Gemini inline extraction uses a JSON response schema; malformed/empty/oversized AI tables cannot replace prior work. Failed OCR preserves the prior table and reports failure. Bitmap resources close on failure; individual OCR reads time out after 60 seconds.
+
+Validation: private supplier samples are integration inputs, never public fixtures. Row count and test-suite success are not extraction accuracy. Product spelling, size, selling unit, quantity tiers and completeness still require source review. Browser timing and live provider inference must be verified separately. No new database migration or automatic AI/paid fallback is introduced.
