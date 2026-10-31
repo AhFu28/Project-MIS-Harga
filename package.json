@@ -1,6 +1,6 @@
 {
   "name": "project-mis-harga",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -11,10 +11,12 @@
     "secrets:generate": "node scripts/secrets.mjs"
   },
   "dependencies": {
+    "@tesseract.js-data/eng": "^1.0.0",
     "exceljs": "4.4.0",
     "jspdf": "4.2.1",
     "pdfjs-dist": "^5.4.624",
-    "pptxgenjs": "4.0.0"
+    "pptxgenjs": "4.0.0",
+    "tesseract.js": "^7.0.0"
   },
   "devDependencies": {
     "wrangler": "4.156.0"

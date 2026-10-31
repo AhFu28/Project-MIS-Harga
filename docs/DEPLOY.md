@@ -1,4 +1,4 @@
-> Catatan arsip v0.1. Alur akun dan setup terbaru mengikuti [README v0.2](../README.md); login bersama dan generator setup bukan alur v0.2.
+> Catatan arsip v0.1. Alur akun dan setup terbaru mengikuti [README v0.3](../README.md); login bersama dan generator setup bukan alur terbaru.
 
 # Panduan deploy dan operasional — MIS Harga v0.1
 

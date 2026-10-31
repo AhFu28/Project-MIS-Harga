@@ -1,54 +1,61 @@
-# MIS Harga v0.2
+# MIS Harga v0.3
 
-Workspace internal satu tim di Cloudflare Workers + D1, dengan halaman awal login username/password. Halaman dan aset workspace dilindungi sesi server. Mengikuti prinsip [Ponytail](https://github.com/DietrichGebert/ponytail): Web APIs/native UI, validasi data harga, perhitungan deterministik, review manusia, dan tes terfokus.
+Workspace internal satu tim di Cloudflare Workers + D1. Landing hanya login username/password; halaman, API dan aset workspace memerlukan sesi. Mengikuti prinsip [Ponytail](https://github.com/DietrichGebert/ponytail): Web APIs, UI native, perubahan kecil, validasi bersama, perhitungan deterministik dan review manusia.
 
 ## Alur penggunaan
 
-1. Drop gambar/PDF/XLSX/CSV, atau input manual. CSV/XLSX dipetakan lokal, OCR visual memakai Gemini setelah sign in dan persetujuan pemrosesan.
-2. Periksa sumber dan tabel berdampingan. Koreksi harga, unit, kondisi, channel, tanggal dan item. Setelah login, copy TSV atau download Excel sebelum menyimpan draft.
-3. Simpan draft di D1; folder PT/tanggal terbentuk dari metadata. Draft boleh belum lengkap. Konfirmasi hanya setelah harga/sumber/unit dan mapping standar valid.
-4. Admin membuat master item dan menyetujui alias per PT/spesifikasi. Alias persis yang disetujui dapat dipakai ulang; saran mirip tidak otomatis digabung.
-5. Kompilasi item × PT dari batch terkonfirmasi. Pilih date range dan PT; klik harga untuk semua sumber. Konflik diberi label dan tidak dipilih sebagai harga utama.
-6. Analisis range → preview 10 slide → edit narasi / review usulan AI → download PPTX/PDF. Simpan snapshot angka, filter dan narasi; perubahan sumber berikutnya tidak mengubah snapshot lama.
+1. **Tambah Harga:** drop gambar/PDF lalu tekan Proses. XLSX/CSV/TSV/TXT dibaca lokal; pilih sheet/kolom jika deteksi belum jelas. Impor tabel dipisahkan per PT/tanggal. JSON cadangan `entries` tersedia dengan verifikasi metadata.
+2. **Periksa:** sumber dan tabel berdampingan, pencarian/filter, 50 baris per halaman. Koreksi barang, harga, satuan dan kondisi; Detail memuat SKU, ukuran, potongan, kemasan, MOQ/channel/wilayah/basis. Semua baris ikut ekspor/simpan.
+3. **Simpan:** autosave IndexedDB setelah 2 detik diam, paling lambat 10 detik selama perubahan. Tidak ada timer penulisan server. Tombol Simpan sementara menyimpan draft di D1. Simpan harga meminta konfirmasi pemeriksaan seluruh sumber; data final tetap memerlukan field valid. Gambar dilepas setelah simpan berhasil; pilih ulang file yang hash-nya sama untuk memeriksa draft.
+4. **Data Harga:** arsip PT/tanggal, lanjutkan draft, copy final ke draft koreksi, tarik versi lama tanpa menghapus histori, download sumber dan kompilasi.
+5. **Pembanding:** Admin membuat daftar item prioritas. Item lain tetap tersimpan tanpa harus dipetakan. Aturan persis per PT/nama atau SKU/spesifikasi dipakai ulang; saran nama mirip perlu keputusan manusia. Admin dapat menetapkan konversi pack/BAG ke kg dengan berat bersih terkonfirmasi. Sumber asli dan snapshot master tetap disimpan.
+6. **Analisis:** date range/PT, minggu Senin–Minggu, rata-rata seluruh update pada konteks sebanding. Minggu kosong ditandai, bukan diisi nol. Ukuran, potongan, kondisi, MOQ, wilayah, channel dan basis berbeda dipisah. Konflik tidak menjadi headline.
+7. **Laporan:** preview 10 slide, narasi dapat diedit, review AI opsional, ekspor PPTX/PDF dan snapshot. Angka dihitung aplikasi; AI tidak menetapkan harga.
+
+## OCR dan angka
+
+Tesseract.js 7 berjalan di browser dengan model English best_int dan WASM yang dibundel pada origin aplikasi. Tidak mengirim gambar ke layanan OCR. Tabel bergrid dengan header berwarna dikenali secara heuristik, dipotong per sel, diperbesar 4×, dan harga dibaca dua kali (asli/pembersihan garis). Hasil berbeda ditandai. Layout lain menghasilkan kandidat baris dan teks mentah untuk koreksi/manual/AI.
+
+Deteksi otomatis **belum menjamin semua blok/barang/tier terbaca**. Kesepakatan dua bacaan juga bukan bukti angka benar. Periksa jumlah baris, unit, judul dan catatan sumber sebelum final. Wahana Fresh: pilih HARGA biasa, bukan HORECA; importer tabel dan prompt AI mengikuti aturan ini, hasil OCR umum tetap harus diperiksa manusia. Semua tier dipertahankan; belum ada pemilihan otomatis tier order terbesar. Angka harga dan angka ukuran/MOQ tidak boleh dicampur.
+
+Format input file dipilih eksplisit US `35,000.50` atau Indonesia `35.000,50`. Hasil edit/ekspor memakai US, maksimal dua desimal; grouping rusak ditolak tanpa mengubah skala. Observasi baru menambah `amount_minor`, `scale=2` dan versi skema secara additive; data lama tidak diskalakan ulang. Konversi kemasan dibulatkan dua desimal, tidak mengubah harga asli.
 
 ## Peran dan AI
 
 | Kemampuan | Admin | Editor | Viewer |
 |---|---|---|---|
-| Baca arsip, kompilasi, report dan ekspor | Ya | Ya | Ya |
-| AI bersama, simpan/koreksi/konfirmasi draft, simpan report | Ya | Ya | Tidak |
-| API key, katalog model, tes koneksi, engine review | Ya | Tidak | Tidak |
-| User, master item dan persetujuan alias | Ya | Tidak | Tidak |
+| Baca seluruh data tim dan ekspor | Ya | Ya | Ya |
+| Koreksi/simpan/konfirmasi draft, AI bersama, simpan report | Ya | Ya | Tidak |
+| API key, model, tes koneksi, engine, akun | Ya | Tidak | Tidak |
+| Master pembanding, alias global dan konversi | Ya | Tidak | Tidak |
 
-Otorisasi ditegakkan API. Frontend tidak menerima key atau ciphertext. Key terenkripsi AES-GCM di D1; master key hanya runtime Secret. Admin memilih engine review teks/report; OCR gambar/PDF memakai Gemini. OpenRouter hanya model eksplisit `:free` dengan harga katalog nol. Tidak ada fallback berbayar. Katalog bukan bukti inference berhasil: gunakan tombol Tes koneksi. Kuota aplikasi AI 30 permintaan/hari bersama; provider bisa membatasi lebih rendah.
+Pengaturan Admin ada di menu Akun. API menegakkan otorisasi; key terenkripsi AES-GCM di D1 dan tidak dikembalikan ke browser. OpenRouter default `openrouter/free`, atau model `:free` dengan seluruh harga katalog nol. Gemini auto-free memilih katalog dari daftar kebijakan gratis bertanggal; model lain diblokir dan daftar memiliki masa berlaku. Pemilik harus mengonfirmasi proyek Gemini tanpa billing. Tidak ada fallback ke model berbayar. Katalog bukan bukti inference berhasil: gunakan Tes koneksi. Kuota aplikasi AI bersama 30 permintaan/hari, tes koneksi terpisah; provider dapat membatasi lebih rendah. Cache ekstraksi tidak menghabiskan kuota baru. Error provider tidak menghalangi OCR lokal/manual.
 
-User baru/reset wajib mengganti password sementara. Password reset, perubahan role, dan penonaktifan membatalkan sesi. Admin aktif terakhir dilindungi. Akun bootstrap berasal dari hash runtime, tidak dari password di repository.
+User baru/reset wajib mengganti password sementara. Perubahan password/role/status membatalkan sesi; Admin aktif terakhir dilindungi. Jangan menyimpan password bootstrap di kode.
 
 ## Deployment
 
-Cloudflare Workers Builds: build `npm run build`, deploy `npx wrangler deploy`. Binding D1 `DB`. Environment build `D1_DATABASE_ID` dapat menunjuk database yang sudah ada; jangan mengganti database saat upgrade.
+Cloudflare Workers Builds: build `npm run build`, deploy `npx wrangler deploy`. Binding D1 `DB`; build environment `D1_DATABASE_ID` menunjuk database yang sudah ada. Migrasi menambah kolom spesifikasi/aturan tanpa menghapus data. Pertahankan secrets dan database saat upgrade.
 
 Runtime Secrets:
 
-- `BOOTSTRAP_ADMIN_HASH`: verifier PBKDF2 untuk admin awal `adminF`, hanya dipakai jika tabel user kosong. Mengubahnya tidak mereset user yang sudah dibuat.
-- `SETTINGS_ENCRYPTION_KEY`: 32 byte Base64; pertahankan key lama agar konfigurasi provider dapat didekripsi.
-- `APP_PASSWORD_HASH`: secret v0.1 boleh dipertahankan saat upgrade; entrypoint v0.2 memakai akun individual.
+- `BOOTSTRAP_ADMIN_HASH`: verifier PBKDF2 admin awal, hanya untuk tabel user kosong; bukan cara mereset akun yang sudah ada.
+- `SETTINGS_ENCRYPTION_KEY`: 32 byte Base64; pertahankan agar key provider lama dapat didekripsi.
+- `APP_PASSWORD_HASH`: secret versi lama boleh tetap ada; login sekarang memakai akun individual.
 
-Konfirmasi proyek Gemini gratis tanpa billing pada Admin Settings hanya setelah pemilik memeriksa billing Google. Default false; deployment juga dapat menetapkan `GEMINI_FREE_CONFIRMED=true`. Isi key via Admin Settings → Fetch model → pilih → Simpan → Tes koneksi. Konfirmasi consent provider sebelum mengirim data.
+R2 tidak diaktifkan. Tidak ada arsip gambar baru dari alur upload ini. Backup sumber asli tetap tanggung jawab pengguna. Endpoint kompatibilitas lama tetap dilindungi; koneksi Sheets lama Admin-only, tidak ditampilkan sebagai alur utama dan tidak menulis spreadsheet.
 
-R2 `DOCUMENTS` opsional, tidak diaktifkan secara default. Tanpa R2, data tabel tersimpan di D1, gambar hanya preview/download lokal dan tidak tersedia lagi setelah perangkat ditutup. Mengaktifkan R2 perlu penilaian biaya akun; allowance gratis bukan jaminan tagihan nol.
+## Batas dan validasi
 
-## Batas rilis
-
-- Satu workspace tim bersama, bukan isolasi multi-perusahaan. Akses Viewer mencakup seluruh data tim.
-- 2 MB/file, 5 file per pilihan upload, 100 baris/batch, maksimal 10.000 observasi kompilasi. PDF besar perlu dipecah. File XLSX/CSV diproses di browser; formula/rich text ditolak.
-- Google Sheets publik dibaca satu snapshot CSV tab bernama; tidak menulis sumber dan belum sinkronisasi terjadwal/OAuth. Hasil baca dapat diimpor melalui mapping long/wide.
-- Alias/spec harus tepat; belum konversi kg/pack, fuzzy merge massal atau normalisasi master otomatis. Item baru dibuat Admin.
-- Tanggal dokumen OCR belum menjadi metadata terpisah yang terstruktur; tanggal upload dan berlaku dibedakan. Metadata tanggal batch berlaku untuk semua baris; pisahkan batch jika periode berbeda.
-- Report bersifat deskriptif: observasi mingguan terakhir, perubahan awal–akhir, WoW hanya minggu berurutan. Tanpa forecast, penyebab kausal atau margin. Ringkasan konflik dikeluarkan. Narasi AI tetap perlu review; tidak ada perubahan harga otomatis.
-- Maksimum 12 baris tabel dan 6 seri sepadan di slide; ekspor kompilasi menyediakan seluruh detail. Snapshot tidak menyimpan file presentasi; ekspor ulang dari snapshot.
-- Tidak ada migrasi arsip RAR atau data supplier asli otomatis. UAT dengan sumber nyata, provider API asli, kapasitas Workers Free dan pemulihan backup perlu diverifikasi terpisah.
+- Satu workspace tim, bukan isolasi beberapa organisasi.
+- Antrean 10 file, maksimal 5 MB/file dan total 25 MB. Gambar maksimal 12 MP; fallback OCR satu frame maksimal 6 MP. PDF maksimal 10 halaman, masing-masing render maksimal 6 MP. Satu OCR berjalan pada satu waktu, dapat dibatalkan.
+- Preview tabel maksimal 5.000 baris × 100 kolom. Simpan maksimal 500 observasi per batch dan 850 KB payload baris sebelum metadata. Melebihi batas ditolak tanpa memotong; ekspor tetap mencakup seluruh baris. XLSX formula/rich text ditolak; gunakan values. Bantuan AI maksimal 2 MB/gambar; PDF gunakan OCR lokal atau gambar halaman.
+- Kompilasi maksimal 10.000 observasi. Analisis memakai data terkonfirmasi saja, tanpa carry-forward, forecast, klaim sebab-akibat atau margin. Minggu pertama/terakhir mengikuti potongan date range pilihan.
+- Draft IndexedDB hanya pada browser/perangkat/user itu, bukan sinkronisasi multi-perangkat atau backup; logout menghapus draft lokal setelah peringatan. Draft web memerlukan tombol simpan.
+- Koreksi harga final berupa draft baru; pengguna menarik versi lama sebelum final agar tidak terjadi konflik. Belum ada penggantian versi final otomatis.
+- Laporan masih 10 slide, maksimum 12 baris tabel dan 6 seri sebanding per grafik. Detail lengkap tersedia melalui ekspor kompilasi. Tidak ada penulisan Google Sheets atau sinkronisasi terjadwal.
+- Tes otomatis memakai data sintetis dan provider mock. Pengujian UI memakai API fixture terpisah yang tidak dikirim ke produksi. Akurasi OCR pada semua variasi dokumen, API key nyata, performa perangkat rendah dan beban tim nyata masih perlu UAT.
 
 ## Pengembangan
 
-Node 22+, `npm ci`, `npm test`, `npm run build`, `npx wrangler deploy --dry-run`, `npm run dev`. Jangan commit `.dev.vars`, key, password nyata, data pengguna, dokumen supplier, atau database. Tes memakai data sintetis. Skema upgrade additive mempertahankan tabel v0.1; endpoint lama tetap dilindungi otorisasi v0.2.
+Node 22+, `npm ci`, `npm test`, `npm run build`, `npx wrangler deploy --dry-run`, `npm run dev`. Jangan commit `.dev.vars`, key, password nyata, data supplier/pengguna atau database. Dependensi OCR dibundel saat build; browser tidak mengunduh model dari CDN eksternal.
