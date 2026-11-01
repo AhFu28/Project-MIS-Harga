@@ -1,4 +1,4 @@
-# MIS Harga v0.4.1
+# MIS Harga v0.4.2
 
 Workspace internal satu tim di Cloudflare Workers + D1. Landing hanya login username/password; halaman, API dan aset workspace memerlukan sesi. Mengikuti prinsip [Ponytail](https://github.com/DietrichGebert/ponytail): Web APIs, UI native, perubahan kecil, validasi bersama, perhitungan deterministik dan review manusia.
 
@@ -95,3 +95,7 @@ Browser regression checks run against synthetic data only (`npm run test:e2e`); 
 ## v0.4.1 — source zoom and responsive review
 
 Image/PDF previews support zoom from 25% to 400%, fit width, mouse drag while zoomed and an expanded viewer. Zoom affects only the local preview; it never resizes the OCR input or changes saved prices. The source overlay stays aligned with its image. Review tables fit their panel on large screens and become labelled rows on narrower panels, preserving all fields and row actions without horizontal table scrolling.
+
+## v0.4.2 — review visibility and shared source items
+
+Add/delete/move/undo returns to all rows and shows filter visibility counts. Source details are optional and explain provenance. Explicitly confirmed shared prices can create one row per standard item, retaining source and mapping group through save/export. Ambiguous multi-item identities are not remembered as global single-item rules.

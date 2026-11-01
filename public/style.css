@@ -45,3 +45,5 @@ dialog::backdrop{backdrop-filter:none}.edit-table .conversion-button[hidden]{dis
 @container(max-width:480px){.edit-table tr{grid-template-columns:repeat(2,minmax(0,1fr))}.edit-table td:nth-child(5){grid-column:1/-1}}
 @media(max-width:1100px){.upload-layout{grid-template-columns:minmax(0,1fr)}.source-panel{position:static}.source-viewport{max-height:45vh}}
 @media(max-width:700px){.source-viewer{width:calc(100vw - 12px);height:calc(100dvh - 12px);padding:12px}.result-panel .edit-table tbody{padding:8px}.source-panel .preview-local{padding:12px}}
+
+.review-filter-note{padding-top:0!important;padding-bottom:8px!important}.review-filter-note p{margin-bottom:8px}.shared-category{margin-top:8px;font-size:12px;white-space:normal;max-width:100%;padding:7px}.category-checks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:20px 0;max-height:45vh;overflow:auto}.category-checks label{display:flex;align-items:flex-start;gap:6px;line-height:1.5}.category-checks input{flex:none;width:auto;margin:3px 0 0}@media(max-width:600px){.category-checks{grid-template-columns:1fr}}
