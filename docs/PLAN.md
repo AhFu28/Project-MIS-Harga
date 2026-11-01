@@ -265,3 +265,9 @@ Diperiksa 30 Oktober 2026:
 
 Belum diperiksa pada akun pemilik: aktivasi R2, limit CPU/kuota nyata, resource binding, login, key provider, dan deployment. Plan telah disesuaikan; implementasi dan uji runtime belum dilakukan.
 
+
+## Upgrade execution checkpoint — 2026-11-01
+
+The first v0.4.0 release implements the R1 shell, safe vendor revalidation, bounded row rendering, source-preview preservation, local timing instrumentation, serial OCR worker reuse, and synthetic browser tests. Existing security/approval gates remain. Global mapping proposals, supplier profiles, weekly coverage and analytical table migrations are not included in this release. Private full ground-truth transcription and user-device performance measurements are still required; 67 earlier tests and selected image controls never implied global OCR accuracy.
+
+Rollback to the prior v0.3.4 Worker remains possible: no D1 schema or stored price change is introduced. Deploy the whole asset bundle with its matching Worker/source version. Do not remove previous cached asset versions as a separate production operation during rollback.

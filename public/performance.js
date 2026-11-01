@@ -1,0 +1,2 @@
+// Bounded, local timings only; never record file names, prices or provider payloads.
+export async function measureStage(name,operation){const start=performance.now();try{return await operation();}finally{performance.measure('mis:'+name,{start,end:performance.now()});const entries=performance.getEntriesByType('measure').filter(e=>e.name.startsWith('mis:'));if(entries.length>100)for(const name of new Set(entries.slice(0,entries.length-80).map(e=>e.name)))performance.clearMeasures(name);}}

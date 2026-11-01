@@ -1,4 +1,4 @@
-# MIS Harga v0.3.4
+# MIS Harga v0.4.0
 
 Workspace internal satu tim di Cloudflare Workers + D1. Landing hanya login username/password; halaman, API dan aset workspace memerlukan sesi. Mengikuti prinsip [Ponytail](https://github.com/DietrichGebert/ponytail): Web APIs, UI native, perubahan kecil, validasi bersama, perhitungan deterministik dan review manusia.
 
@@ -83,3 +83,11 @@ Validation limitation: synthetic parser/grid/security tests are automated. An in
 - Gemini inline extraction uses a JSON response schema; malformed/empty/oversized AI tables cannot replace prior work. Failed OCR preserves the prior table and reports failure. Bitmap resources close on failure; individual OCR reads time out after 60 seconds.
 
 Validation: private supplier samples are integration inputs, never public fixtures. Row count and test-suite success are not extraction accuracy. Product spelling, size, selling unit, quantity tiers and completeness still require source review. Browser timing and live provider inference must be verified separately. No new database migration or automatic AI/paid fallback is introduced.
+
+## v0.4.0 — first upgrade release
+
+Masukkan / Hasil / Admin settings replace the four main navigation entries; existing standard prices, detail, analysis and reports remain accessible under Hasil. Upload adds first-run guidance and an explicitly fictional local example, a single primary Save action, draft/export options, and 25-row review pages. OCR completion preserves the source preview rather than rebuilding the entire upload page.
+
+Versioned vendor assets revalidate after authentication; private data and application pages stay no-store. A single OCR worker is reused serially and recycled on failure/cancel or after idle time. Recognition algorithms and source prices are unchanged. Local draft saving still does not write to D1 periodically.
+
+Browser regression checks run against synthetic data only (`npm run test:e2e`); see `docs/PERF.md` for measurement limits. This release does not implement PT profiles, mapping proposals, coverage grids, observations migrations, terms, simulations or spreadsheet synchronization. Those remain the next execution-plan stages. No production data migration is required.

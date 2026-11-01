@@ -1,4 +1,4 @@
-import {cp,mkdir,rm,readFile,writeFile} from 'node:fs/promises';
+import {cp,mkdir,rm,readFile,writeFile,rename} from 'node:fs/promises';
 await rm('dist',{recursive:true,force:true});await mkdir('dist/vendor',{recursive:true});await cp('public','dist',{recursive:true});await cp('node_modules/exceljs/dist/exceljs.min.js','dist/vendor/exceljs.min.js');await cp('node_modules/exceljs/LICENSE','dist/vendor/ExcelJS-LICENSE.txt');
 // R2 stays opt-in: enabling it can activate a metered subscription.
 const c=JSON.parse(await readFile('wrangler.jsonc','utf8'));
@@ -17,3 +17,8 @@ const {readdir}=await import('node:fs/promises');
 for(const name of await readdir('node_modules/tesseract.js-core'))if(/\.wasm(?:\.js)?$/.test(name))await cp('node_modules/tesseract.js-core/'+name,'dist/vendor/ocr/'+name);
 await cp('node_modules/@tesseract.js-data/eng/4.0.0_best_int/eng.traineddata.gz','dist/vendor/ocr/eng.traineddata.gz');
 for(const pkg of ['tesseract.js','tesseract.js-core'])await cp('node_modules/'+pkg+'/'+(pkg==='tesseract.js'?'LICENSE.md':'LICENSE'),'dist/vendor/ocr/'+pkg+'-LICENSE.txt');
+
+const {version}=JSON.parse(await readFile('package.json','utf8'));
+if(!/^\d+\.\d+\.\d+$/.test(version))throw Error('Invalid asset version');
+await rename('dist/vendor','dist/vendor-build');await mkdir('dist/vendor');await rename('dist/vendor-build','dist/vendor/'+version);
+for(const file of ['app.js','ocr.js']){const path='dist/'+file;await writeFile(path,(await readFile(path,'utf8')).replaceAll('/vendor/','/vendor/'+version+'/'));}

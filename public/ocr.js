@@ -1,7 +1,9 @@
+import {createOCRSession} from './ocr-session.js';
 import {rawRow} from './data.js';
 import {parseMoney} from './lib/rules.js';
 import {cleanProductName,normalizeUnit,UNITS,parseSourceWeight} from './lib/standards.js';
-let loadPromise;
+let loadPromise,session;
+function engine(){if(!session){session=createOCRSession(logger=>globalThis.Tesseract.createWorker('eng',1,{workerPath:'/vendor/ocr/worker.min.js',corePath:'/vendor/ocr',langPath:'/vendor/ocr',logger}));globalThis.addEventListener?.('pagehide',()=>{void session.dispose();});}return session;}
 function load(){return loadPromise??=new Promise((resolve,reject)=>{const el=document.createElement('script');el.src='/vendor/ocr/tesseract.min.js';el.onload=resolve;el.onerror=()=>{loadPromise=null;reject(Error('Engine OCR lokal gagal dimuat. Coba lagi setelah masuk akun.'));};document.head.append(el);});}
 const groups=points=>{const out=[];for(const p of points){const last=out.at(-1);if(last&&p<=last.at(-1)+2)last.push(p);else out.push([p]);}return out.map(g=>Math.round(g.reduce((a,b)=>a+b,0)/g.length));};
 export function detectRuledTables({data,width:w,height:h}){
@@ -137,9 +139,10 @@ async function recognizePage(worker,image,name,locale,signal,progress){
  c.width=c.height=1;return {rows,warnings,rawText:headerText};
 }
 export async function localOCR(source,{locale='id-ID',signal,onProgress=()=>{}}={}){
- onProgress('Memuat engine OCR…',1);await load();if(!source.file)throw Error('Pilih kembali file sumber dari perangkat.');onProgress('Menyiapkan OCR lokal…');const worker=await globalThis.Tesseract.createWorker('eng',1,{workerPath:'/vendor/ocr/worker.min.js',corePath:'/vendor/ocr',langPath:'/vendor/ocr',logger:m=>{if(m.status==='recognizing text')onProgress('Membaca bagian aktif… '+Math.round(m.progress*100)+'%');}});const abort=()=>{void worker.terminate();};signal?.addEventListener('abort',abort,{once:true});const results={rows:[],warnings:[],rawText:''};let pdf;
+ onProgress('Memuat engine OCR…',1);await load();if(!source.file)throw Error('Pilih kembali file sumber dari perangkat.');onProgress('Menyiapkan OCR lokal…');return engine().run(async worker=>{const results={rows:[],warnings:[],rawText:''};let pdf;
  try{if(source.mime==='application/pdf'){const pdfjs=await import('/vendor/pdf.mjs');pdfjs.GlobalWorkerOptions.workerSrc='/vendor/pdf.worker.mjs';pdf=await pdfjs.getDocument({data:new Uint8Array(await source.file.arrayBuffer()),isEvalSupported:false}).promise;if(pdf.numPages>10)throw Error('PDF maksimum 10 halaman untuk OCR lokal; pisahkan file.');for(let n=1;n<=pdf.numPages;n++){const page=await pdf.getPage(n),vp=page.getViewport({scale:1.5});if(vp.width*vp.height>6000000)throw Error('Halaman terlalu besar; gunakan potongan gambar maksimal 6 MP.');const c=canvas(vp.width,vp.height);await page.render({canvasContext:c.getContext('2d'),viewport:vp}).promise;const out=await recognizePage(worker,c,source.filename+' halaman '+n,locale,signal,onProgress);results.rows.push(...out.rows);results.warnings.push(...out.warnings);results.rawText+=out.rawText+'\n';c.width=c.height=1;}}
  else{const bitmap=await createImageBitmap(source.file);try{if(bitmap.width*bitmap.height>12000000)throw Error('Gambar melebihi 12 MP; pilih potongan tanpa mengurangi keterbacaan.');source.dimensions={width:bitmap.width,height:bitmap.height};const out=await recognizePage(worker,bitmap,source.filename,locale,signal,onProgress);Object.assign(results,out);}finally{bitmap.close();}}
  onProgress('OCR selesai · periksa hasil',100);return results;
- }finally{signal?.removeEventListener('abort',abort);await worker.terminate();await pdf?.destroy();}
+ }finally{await pdf?.destroy();}
+ },{signal,onProgress:m=>{if(m.status==='recognizing text')onProgress('Membaca bagian aktif… '+Math.round(m.progress*100)+'%');}});
 }
