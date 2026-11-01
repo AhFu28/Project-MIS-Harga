@@ -12,3 +12,36 @@ dialog::backdrop{backdrop-filter:none}.edit-table .conversion-button[hidden]{dis
 .ocr-progress{display:grid;grid-template-columns:minmax(120px,1fr) auto;gap:8px 14px;margin:16px 0}.ocr-progress[hidden]{display:none}.ocr-progress progress{width:100%;height:18px;accent-color:var(--accent,#b9f477)}.ocr-progress small{grid-column:1/-1;color:#9aabbc}.source-tier{display:block;color:#b9f477;margin-top:6px}.source-tier[hidden]{display:none}
 
 .result-nav{display:flex;gap:8px;padding:16px 32px 0;flex-wrap:wrap}.result-nav[hidden]{display:none}.result-nav .active{border-color:var(--accent);color:var(--accent)}.welcome-steps{display:flex;gap:24px;flex-wrap:wrap}.save-options{position:relative}.save-options summary{cursor:pointer;padding:12px}.save-options[open]>.actions{padding:12px;border:1px solid var(--line);border-radius:8px}.source-list small{display:block;font-weight:400;margin-top:4px}.welcome p{margin:8px 0}
+
+/* Source zoom stays inside its own viewport; review controls always fit their panel. */
+.upload-layout{grid-template-columns:minmax(240px,320px) minmax(0,1fr)}
+.source-panel{position:sticky;top:16px}
+.source-panel .preview-local{max-height:none;overflow:visible}
+.source-tools{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.source-tools button{padding:7px 10px}.source-tools output{min-width:48px;text-align:center;font-size:13px}
+.source-viewport{max-width:100%;max-height:min(65vh,680px);overflow:auto;overscroll-behavior:contain;background:#0a1119;border-radius:8px;touch-action:pan-x pan-y}
+.source-viewport.can-pan{cursor:grab}.source-viewport.panning{cursor:grabbing;user-select:none}
+.source-stage{width:100%;max-width:none;line-height:0}.source-stage [data-zoom-media]{display:block;width:100%;height:auto;max-height:none;max-width:none}
+.source-stage.pdf-stage canvas{position:static;inset:auto;width:100%;height:auto;pointer-events:auto}
+.source-viewer{width:calc(100vw - 32px);max-width:none;height:calc(100dvh - 32px);max-height:none;padding:18px}
+.source-viewer .source-viewport{max-height:calc(100dvh - 150px)}.source-viewer .dialog-head{margin-bottom:10px}
+.result-panel{container-type:inline-size}.result-panel>.table-wrap{overflow:visible}
+.result-panel .edit-table{width:100%;min-width:0;table-layout:fixed;white-space:normal}
+.result-panel .edit-table th{padding:12px 7px;overflow-wrap:anywhere}
+.result-panel .edit-table th:nth-child(1){width:4%}.result-panel .edit-table th:nth-child(2){width:26%}.result-panel .edit-table th:nth-child(3){width:12%}.result-panel .edit-table th:nth-child(4){width:12%}.result-panel .edit-table th:nth-child(5){width:12%}.result-panel .edit-table th:nth-child(6){width:22%}.result-panel .edit-table th:nth-child(7){width:12%}
+.result-panel .edit-table td:nth-child(n){min-width:0;padding:10px 6px;overflow-wrap:anywhere}
+.result-panel .edit-table td input,.result-panel .edit-table td select,.result-panel .edit-table td input.product-input{width:100%;min-width:0;max-width:100%;font-size:13px}
+.result-panel .edit-table td small,.result-panel .row-extra p{max-width:100%;white-space:normal;overflow-wrap:anywhere}
+.result-panel .row-extra .inline-grid{min-width:0;max-width:100%}.result-panel .row-actions{min-width:0;gap:4px}.result-panel .row-actions button{padding:7px}
+@container(max-width:850px){
+ .edit-table thead{display:none}.edit-table tbody{display:grid;gap:12px;padding:12px}
+ .edit-table tr{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border:1px solid var(--line);border-radius:8px;padding:8px}
+ .edit-table tr.needs-review{border-left:3px solid #e3aa57}
+ .edit-table td:nth-child(n){display:block;border:0}
+ .edit-table td:nth-child(1),.edit-table td:nth-child(2),.edit-table td:nth-child(6),.edit-table td:nth-child(7){grid-column:1/-1}
+ .edit-table td::before{content:attr(data-label);display:block;margin-bottom:6px;color:var(--muted);font-size:12px}
+ .edit-table .row-number::before{display:inline;margin-right:6px}.edit-table .row-actions{flex-wrap:wrap}
+}
+@container(max-width:480px){.edit-table tr{grid-template-columns:repeat(2,minmax(0,1fr))}.edit-table td:nth-child(5){grid-column:1/-1}}
+@media(max-width:1100px){.upload-layout{grid-template-columns:minmax(0,1fr)}.source-panel{position:static}.source-viewport{max-height:45vh}}
+@media(max-width:700px){.source-viewer{width:calc(100vw - 12px);height:calc(100dvh - 12px);padding:12px}.result-panel .edit-table tbody{padding:8px}.source-panel .preview-local{padding:12px}}

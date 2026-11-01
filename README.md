@@ -1,4 +1,4 @@
-# MIS Harga v0.4.0
+# MIS Harga v0.4.1
 
 Workspace internal satu tim di Cloudflare Workers + D1. Landing hanya login username/password; halaman, API dan aset workspace memerlukan sesi. Mengikuti prinsip [Ponytail](https://github.com/DietrichGebert/ponytail): Web APIs, UI native, perubahan kecil, validasi bersama, perhitungan deterministik dan review manusia.
 
@@ -91,3 +91,7 @@ Masukkan / Hasil / Admin settings replace the four main navigation entries; exis
 Versioned vendor assets revalidate after authentication; private data and application pages stay no-store. A single OCR worker is reused serially and recycled on failure/cancel or after idle time. Recognition algorithms and source prices are unchanged. Local draft saving still does not write to D1 periodically.
 
 Browser regression checks run against synthetic data only (`npm run test:e2e`); see `docs/PERF.md` for measurement limits. This release does not implement PT profiles, mapping proposals, coverage grids, observations migrations, terms, simulations or spreadsheet synchronization. Those remain the next execution-plan stages. No production data migration is required.
+
+## v0.4.1 — source zoom and responsive review
+
+Image/PDF previews support zoom from 25% to 400%, fit width, mouse drag while zoomed and an expanded viewer. Zoom affects only the local preview; it never resizes the OCR input or changes saved prices. The source overlay stays aligned with its image. Review tables fit their panel on large screens and become labelled rows on narrower panels, preserving all fields and row actions without horizontal table scrolling.
