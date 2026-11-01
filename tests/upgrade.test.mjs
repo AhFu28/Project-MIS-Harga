@@ -34,3 +34,6 @@ test('cancelling OCR while the factory loads disposes the late worker and preven
 test('performance stages preserve return values and errors without retaining price/file labels',async()=>{
  assert.equal(await measureStage('synthetic',async()=>42),42);await assert.rejects(()=>measureStage('synthetic-error',async()=>{throw Error('failure');}),/failure/);assert.equal(performance.getEntriesByName('mis:synthetic').length,1);performance.clearMeasures();
 });
+
+import {snapshot} from '../public/drafts.js';
+test('fictional training examples are excluded from recovery snapshots',()=>{assert.deepEqual(snapshot([{sample:true,dirty:true,rows:[{product:'fictional',amount:12345}]}]),[]);});
